@@ -2,6 +2,20 @@
 
 import React, { useState } from 'react';
 
+type LedgerEntry = {
+  id: number;
+  date: string;
+  type: string;
+  refNo: string;
+  accountName: string;
+  orderNo: string;
+  otherRef: string;
+  barcode: string;
+  desc: string;
+  qtyIn: number | null;
+  qtyOut: number | null;
+};
+
 export default function TraceabilityDemo() {
   const [activeView, setActiveView] = useState('adjustment'); // 'adjustment' or 'ledger'
   
@@ -19,7 +33,7 @@ export default function TraceabilityDemo() {
   const [adjustQty, setAdjustQty] = useState(1);
 
   // Mock Ledger Data
-  const [ledgerEntries, setLedgerEntries] = useState([
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([
     { id: 1, date: '02 Jul 2026', type: 'ADJ', refNo: '36792', accountName: 'Stock Adjustement', orderNo: '', otherRef: '', barcode: '205801010', desc: 'JSY P/O PLAIN PLN NAVY', qtyIn: 185, qtyOut: null },
     { id: 2, date: '02 Jul 2026', type: 'ADJ', refNo: '36793', accountName: 'Stock Adjustement', orderNo: '', otherRef: '', barcode: '205801010', desc: 'JSY P/O PLAIN PLN NAVY', qtyIn: null, qtyOut: 10 },
   ]);
