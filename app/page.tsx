@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 type LedgerEntry = {
   id: number;
@@ -29,6 +29,7 @@ export default function TraceabilityDemo() {
   const [poRef, setPoRef] = useState('');
   const [embroidererCode, setEmbroidererCode] = useState('');
   const [deliveryRef, setDeliveryRef] = useState('');
+  const [pendingJob, setPendingJob] = useState('');
   const [notes, setNotes] = useState('');
   const [adjustQty, setAdjustQty] = useState(1);
 
@@ -37,6 +38,13 @@ export default function TraceabilityDemo() {
     { id: 1, date: '02 Jul 2026', type: 'ADJ', refNo: '36792', accountName: 'Stock Adjustement', orderNo: '', otherRef: '', barcode: '205801010', desc: 'JSY P/O PLAIN PLN NAVY', qtyIn: 185, qtyOut: null },
     { id: 2, date: '02 Jul 2026', type: 'ADJ', refNo: '36793', accountName: 'Stock Adjustement', orderNo: '', otherRef: '', barcode: '205801010', desc: 'JSY P/O PLAIN PLN NAVY', qtyIn: null, qtyOut: 10 },
   ]);
+
+  // Handle locking quantity if a pending job is selected
+  useEffect(() => {
+    if (pendingJob === 'JOB-1055') {
+      setAdjustQty(50); // Matches the mock dispatch out
+    }
+  }, [pendingJob]);
 
   const handleSave = () => {
     if (!direction || !adjType) {
@@ -57,7 +65,7 @@ export default function TraceabilityDemo() {
     } else if (adjType === 'EMBROIDERY') {
       newType = 'EMB';
       newAccountName = embroidererCode || 'Unknown Embroiderer';
-      newOtherRef = deliveryRef;
+      newOtherRef = direction === 'OUT' ? deliveryRef : pendingJob;
     } else if (adjType === 'DONATION') {
       newType = 'DON';
       newAccountName = 'Donations/Giveaways';
@@ -76,6 +84,10 @@ export default function TraceabilityDemo() {
       newOtherRef = notes;
     }
 
+    const isReceivingEmbroidery = direction === 'IN' && adjType === 'EMBROIDERY';
+    const itemCode = isReceivingEmbroidery ? '2060' : '2058';
+    const itemDesc = isReceivingEmbroidery ? 'JSY P/O GORDON ROAD NAVY' : 'JSY P/O PLAIN PLN NAVY';
+
     const newEntry = {
       id: Date.now(),
       date: '13 Aug 2026',
@@ -84,8 +96,8 @@ export default function TraceabilityDemo() {
       accountName: newAccountName,
       orderNo: newOrderNo,
       otherRef: newOtherRef,
-      barcode: '205801011',
-      desc: 'JSY P/O PLAIN PLN NAVY',
+      barcode: itemCode + '010',
+      desc: itemDesc,
       qtyIn: direction === 'IN' ? adjustQty : null,
       qtyOut: direction === 'OUT' ? adjustQty : null,
     };
@@ -101,9 +113,15 @@ export default function TraceabilityDemo() {
     setPoRef('');
     setEmbroidererCode('');
     setDeliveryRef('');
+    setPendingJob('');
     setNotes('');
     setAdjustQty(1);
   };
+
+  const isReceivingEmbroidery = direction === 'IN' && adjType === 'EMBROIDERY';
+  const displayCode = isReceivingEmbroidery ? '2060' : '2058';
+  const displayDesc = isReceivingEmbroidery ? 'JSY P/O GORDON ROAD NAVY' : 'JSY P/O PLAIN PLN NAVY';
+  const isQtyLocked = pendingJob === 'JOB-1055';
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans text-sm text-gray-800">
@@ -171,11 +189,11 @@ export default function TraceabilityDemo() {
                   <label className="font-semibold block mb-2 text-gray-700">1. Transaction Direction <span className="text-red-500">*</span></label>
                   <div className="flex gap-6 mt-2">
                     <label className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded border border-transparent hover:border-gray-200 transition">
-                      <input type="radio" name="dir" value="IN" className="mr-2 w-4 h-4 text-blue-600" onChange={(e) => {setDirection(e.target.value); setAdjType('');}} checked={direction === 'IN'} />
+                      <input type="radio" name="dir" value="IN" className="mr-2 w-4 h-4 text-blue-600" onChange={(e) => {setDirection(e.target.value); setAdjType(''); setPendingJob('');}} checked={direction === 'IN'} />
                       <span className="font-medium text-green-700">IN (Stock Increase)</span>
                     </label>
                     <label className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded border border-transparent hover:border-gray-200 transition">
-                      <input type="radio" name="dir" value="OUT" className="mr-2 w-4 h-4 text-blue-600" onChange={(e) => {setDirection(e.target.value); setAdjType('');}} checked={direction === 'OUT'} />
+                      <input type="radio" name="dir" value="OUT" className="mr-2 w-4 h-4 text-blue-600" onChange={(e) => {setDirection(e.target.value); setAdjType(''); setPendingJob('');}} checked={direction === 'OUT'} />
                       <span className="font-medium text-red-700">OUT (Stock Decrease)</span>
                     </label>
                   </div>
@@ -187,7 +205,7 @@ export default function TraceabilityDemo() {
                   <select 
                     className="w-full border border-gray-300 rounded p-2.5 bg-white focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed"
                     value={adjType}
-                    onChange={(e) => setAdjType(e.target.value)}
+                    onChange={(e) => {setAdjType(e.target.value); setPendingJob('');}}
                     disabled={!direction}
                   >
                     <option value="">-- Select Category --</option>
@@ -242,6 +260,7 @@ export default function TraceabilityDemo() {
                     {adjType === 'EMBROIDERY' && (
                       <div className="bg-white border-2 border-purple-200 rounded-md p-4 space-y-3 shadow-sm">
                         <h4 className="font-bold text-purple-800 border-b border-purple-100 pb-2 mb-3">Required External Processing Data</h4>
+                        
                         <div className="flex flex-col">
                           <label className="text-xs font-bold text-gray-600 mb-1">Embroiderer Account (Database Lookup) *</label>
                           <select className="border border-gray-300 p-2 rounded focus:ring-2 focus:ring-purple-500 outline-none" onChange={(e) => setEmbroidererCode(e.target.value)} value={embroidererCode}>
@@ -250,10 +269,28 @@ export default function TraceabilityDemo() {
                             <option value="EMB-PALS">Pals</option>
                           </select>
                         </div>
-                        <div className="flex flex-col">
-                          <label className="text-xs font-bold text-gray-600 mb-1">Delivery Note Ref *</label>
-                          <input type="text" className="border border-gray-300 p-2 rounded focus:ring-2 focus:ring-purple-500 outline-none" placeholder="DN-000" onChange={(e) => setDeliveryRef(e.target.value)} value={deliveryRef}/>
-                        </div>
+
+                        {direction === 'OUT' && (
+                          <div className="flex flex-col">
+                            <label className="text-xs font-bold text-gray-600 mb-1">Job Ref / Delivery Note (To send with goods) *</label>
+                            <input type="text" className="border border-gray-300 p-2 rounded focus:ring-2 focus:ring-purple-500 outline-none" placeholder="e.g. JOB-1056" onChange={(e) => setDeliveryRef(e.target.value)} value={deliveryRef}/>
+                          </div>
+                        )}
+
+                        {direction === 'IN' && (
+                          <div className="flex flex-col">
+                            <label className="text-xs font-bold text-gray-600 mb-1">Select Pending Job (To link quantities) *</label>
+                            <select className="border border-gray-300 p-2 rounded focus:ring-2 focus:ring-purple-500 outline-none" onChange={(e) => setPendingJob(e.target.value)} value={pendingJob}>
+                              <option value="">-- Pending Dispatch Jobs --</option>
+                              <option value="JOB-1055">JOB-1055 (50x Plain Navy Sent 01-Aug)</option>
+                            </select>
+                            {isQtyLocked && (
+                              <p className="text-xs text-green-700 font-bold mt-2 bg-green-100 p-1.5 rounded">
+                                ✔ Job Found! Incoming quantity is locked to match original dispatched amount (50).
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -274,8 +311,11 @@ export default function TraceabilityDemo() {
 
             {/* Simulated Grid (Data Entry Area) */}
             <div className="mt-8 border border-gray-300 rounded-md shadow-sm overflow-hidden bg-white">
-              <div className="bg-gray-100 p-2 border-b border-gray-300 font-semibold text-gray-700 text-sm">
-                Item Entry (Simulated Delphi Grid)
+              <div className="bg-gray-100 p-2 border-b border-gray-300 flex justify-between items-center font-semibold text-gray-700 text-sm">
+                <span>Item Entry (Simulated Delphi Grid)</span>
+                {isReceivingEmbroidery && (
+                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">Stock Code dynamically changed for Receiving</span>
+                )}
               </div>
               <table className="w-full text-left text-xs">
                 <thead className="bg-blue-50 text-blue-900 border-b border-gray-200">
@@ -290,8 +330,8 @@ export default function TraceabilityDemo() {
                 </thead>
                 <tbody>
                   <tr className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-2 font-mono">2058</td>
-                    <td className="p-2">JSY P/O PLAIN PLN NAVY</td>
+                    <td className={`p-2 font-mono font-bold ${isReceivingEmbroidery ? 'text-purple-700' : ''}`}>{displayCode}</td>
+                    <td className={`p-2 font-bold ${isReceivingEmbroidery ? 'text-purple-700' : ''}`}>{displayDesc}</td>
                     <td className="p-2">NAVY</td>
                     <td className="p-2">36</td>
                     <td className="p-2 text-right">209.30</td>
@@ -299,9 +339,10 @@ export default function TraceabilityDemo() {
                       <input 
                         type="number" 
                         min="1" 
-                        className="w-20 border border-gray-300 p-1 text-right rounded font-bold text-blue-800 focus:ring-2 focus:ring-blue-500 outline-none" 
+                        className={`w-20 border p-1 text-right rounded font-bold outline-none ${isQtyLocked ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed' : 'border-gray-300 text-blue-800 focus:ring-2 focus:ring-blue-500'}`}
                         value={adjustQty}
                         onChange={(e) => setAdjustQty(Number(e.target.value))}
+                        disabled={isQtyLocked}
                       />
                     </td>
                   </tr>
